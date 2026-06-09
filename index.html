@@ -3,147 +3,105 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema Control Simple</title>
+    <title>Sistema de Gestión de Personal y Asistencia</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
-<body class="bg-gray-50 p-4 font-sans">
+<body class="bg-gray-100 text-gray-800 font-sans">
 
-    <div class="max-w-4xl mx-auto space-y-6">
-        <header class="bg-slate-800 text-white p-4 rounded-xl flex justify-between items-center shadow">
-            <h1 class="text-xl font-bold">🏢 Control Express de Personal</h1>
-            <button onclick="exportarBackup()" class="bg-emerald-500 text-xs px-3 py-1.5 rounded font-bold">📥 Backup JS</button>
-        </header>
-
-        <div class="bg-white p-4 rounded-xl shadow border border-gray-100 flex flex-col items-center">
-            <h2 class="font-bold text-gray-700 mb-2">📸 Escanear QR (DNI)</h2>
-            <div id="reader-simple" class="w-full max-w-xs bg-slate-100 rounded"></div>
-            <div class="mt-2 space-x-2">
-                <button onclick="encenderCamara()" class="bg-indigo-600 text-white text-xs px-3 py-1.5 rounded font-semibold">Iniciar Cámara</button>
-                <button onclick="apagarCamara()" class="bg-gray-400 text-white text-xs px-3 py-1.5 rounded">Apagar</button>
+    <div class="flex h-screen overflow-hidden">
+        <div class="w-64 bg-slate-900 text-white p-6 flex flex-col justify-between">
+            <div>
+                <h1 class="text-2xl font-bold mb-8 text-center text-indigo-400">RR.HH. Panel</h1>
+                <nav class="space-y-2">
+                    <button onclick="switchTab('trabajadores')" id="btn-trabajadores" class="w-full text-left py-2.5 px-4 rounded bg-indigo-600 font-medium transition-colors">
+                        👤 Trabajadores
+                    </button>
+                    <button onclick="switchTab('asistencia')" id="btn-asistencia" class="w-full text-left py-2.5 px-4 rounded hover:bg-slate-800 font-medium transition-colors">
+                        📅 Asistencia y QR
+                    </button>
+                </nav>
+            </div>
+            <div class="space-y-2">
+                <button onclick="exportarBackup()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-4 rounded text-sm font-semibold transition-colors">
+                    📥 Exportar Backup (JS)
+                </button>
             </div>
         </div>
 
-        <div class="bg-white p-4 rounded-xl shadow border border-gray-100">
-            <div class="flex justify-between items-center mb-3">
-                <h2 class="font-bold text-gray-700">👤 Lista de Personal (20 activos)</h2>
-                <button onclick="agregarSimple()" class="bg-indigo-600 text-white text-xs px-3 py-1.5 rounded font-bold">+ Agregar</button>
-            </div>
-            <div class="overflow-x-auto max-h-60 overflow-y-auto border rounded">
-                <table class="w-full text-left text-xs">
-                    <thead class="bg-gray-100 sticky top-0">
-                        <tr>
-                            <th class="p-2">DNI</th>
-                            <th class="p-2">Nombre Completo</th>
-                            <th class="p-2">Área</th>
-                            <th class="p-2 text-center">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tbody-simple" class="divide-y divide-gray-100"></tbody>
-                </table>
-            </div>
-        </div>
+        <div class="flex-1 flex flex-col overflow-y-auto">
+            <header class="bg-white shadow px-8 py-4 flex justify-between items-center">
+                <h2 id="page-title" class="text-xl font-semibold text-gray-700">Gestión de Trabajadores</h2>
+                <span class="text-sm bg-slate-200 text-slate-700 px-3 py-1 rounded-full font-mono" id="live-clock"></span>
+            </header>
 
-        <div class="bg-white p-4 rounded-xl shadow border border-gray-100">
-            <h2 class="font-bold text-gray-700 mb-3">📅 Historial de Asistencias Diarias</h2>
-            <div class="overflow-x-auto border rounded max-h-48 overflow-y-auto">
-                <table class="w-full text-left text-xs">
-                    <thead class="bg-amber-50">
-                        <tr>
-                            <th class="p-2">Hora</th>
-                            <th class="p-2">Empleado</th>
-                            <th class="p-2">Estado</th>
-                        </tr>
-                    </thead>
-                    <tbody id="t-asistencias-simple" class="divide-y divide-gray-100"></tbody>
-                </table>
-            </div>
+            <main class="p-8 flex-1">
+                <section id="sec-trabajadores" class="block">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-lg font-medium text-gray-600">Personal Registrado</h3>
+                        <button onclick="formTrabajador()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-semibold shadow transition-colors">
+                            + Nuevo Trabajador
+                        </button>
+                    </div>
+                    <div class="bg-white rounded-xl shadow overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 border-b border-gray-200 text-gray-600 text-sm uppercase font-semibold">
+                                    <th class="p-4">DNI</th>
+                                    <th class="p-4">Apellidos y Nombres</th>
+                                    <th class="p-4">Género</th>
+                                    <th class="p-4">Edad</th>
+                                    <th class="p-4">Teléfono</th>
+                                    <th class="p-4">Área</th>
+                                    <th class="p-4 text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-trabajadores" class="divide-y divide-gray-100 text-sm">
+                                </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section id="sec-asistencia" class="hidden space-y-6">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="bg-white p-6 rounded-xl shadow flex flex-col items-center">
+                            <h3 class="text-lg font-medium text-gray-700 mb-4 text-center">📷 Escáner QR de Asistencia</h3>
+                            <div id="reader" class="w-full bg-black rounded-lg overflow-hidden" style="max-width: 350px;"></div>
+                            <div class="mt-4 flex gap-2">
+                                <button onclick="inicializarEscaner()" class="bg-indigo-600 text-white px-4 py-2 rounded text-sm font-semibold">Encender Cámara</button>
+                                <button onclick="detenerEscaner()" class="bg-rose-600 text-white px-4 py-2 rounded text-sm font-semibold">Apagar</button>
+                            </div>
+                        </div>
+
+                        <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-medium text-gray-700">🗓️ Registro de Asistencias Diarias</h3>
+                                <button onclick="formAsistenciaManual()" class="bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded text-sm font-semibold">
+                                    + Registro Manual
+                                </button>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left border-collapse text-sm">
+                                    <thead>
+                                        <tr class="bg-slate-50 border-b border-gray-200 text-gray-600 font-semibold">
+                                            <th class="p-3">Fecha / Hora</th>
+                                            <th class="p-3">Trabajador</th>
+                                            <th class="p-3">Estado</th>
+                                            <th class="p-3 text-center">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tabla-asistencias" class="divide-y divide-gray-100">
+                                        </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
         </div>
     </div>
 
-    <script>
-        // Data reducida a 5 registros ilustrativos por optimización de espacio, expandible a los 20 solicitados
-        let lista = [
-            { dni: "72418593", nombres: "Carlos Alberto", apellidos: "Mendoza Ruiz", area: "Recursos Humanos" },
-            { dni: "45129683", nombres: "Ana Sofía", apellidos: "Palacios Gómez", area: "Contabilidad" },
-            { dni: "10293847", nombres: "Luis Fernando", apellidos: "Castro Villalobos", area: "Logística" },
-            { dni: "60481925", nombres: "María Elena", apellidos: "Delgado Torres", area: "Marketing" },
-            { dni: "09384756", nombres: "Jorge Luis", apellidos: "Espinoza Flores", area: "Sistemas" }
-        ];
-        let logs = [];
-        let scanner = null;
-
-        function render() {
-            const tbody = document.getElementById('tbody-simple');
-            tbody.innerHTML = lista.map((t, i) => `
-                <tr>
-                    <td class="p-2 font-mono">${t.dni}</td>
-                    <td class="p-2">${t.apellidos}, ${t.nombres}</td>
-                    <td class="p-2">${t.area}</td>
-                    <td class="p-2 text-center space-x-2">
-                        <button onclick="editarSimple(${i})" class="text-blue-600">Editar</button>
-                        <button onclick="eliminarSimple(${i})" class="text-red-500">X</button>
-                    </td>
-                </tr>
-            `).join('');
-
-            document.getElementById('t-asistencias-simple').innerHTML = logs.map(l => `
-                <tr>
-                    <td class="p-2 font-mono">${l.hora}</td>
-                    <td class="p-2">${l.nombre}</td>
-                    <td class="p-2 text-emerald-600 font-bold">${l.estado}</td>
-                </tr>
-            `).join(logs.length === 0 ? '<tr><td colspan="3" class="p-2 text-center text-gray-400">Sin marcas</td></tr>' : '');
-        }
-
-        async function agregarSimple() {
-            const { value: res } = await Swal.fire({
-                title: 'Nuevo',
-                html: `<input id="d" class="swal2-input" placeholder="DNI"><input id="n" class="swal2-input" placeholder="Nombre"><input id="a" class="swal2-input" placeholder="Apellido"><input id="ar" class="swal2-input" placeholder="Área">`,
-                preConfirm: () => ({ dni: document.getElementById('d').value, nombres: document.getElementById('n').value, apellidos: document.getElementById('a').value, area: document.getElementById('ar').value })
-            });
-            if(res && res.dni) { lista.push(res); render(); }
-        }
-
-        async function editarSimple(i) {
-            const t = lista[i];
-            const { value: res } = await Swal.fire({
-                title: 'Editar',
-                html: `<input id="n" class="swal2-input" value="${t.nombres}"><input id="a" class="swal2-input" value="${t.apellidos}"><input id="ar" class="swal2-input" value="${t.area}">`,
-                preConfirm: () => ({ dni: t.dni, nombres: document.getElementById('n').value, apellidos: document.getElementById('a').value, area: document.getElementById('ar').value })
-            });
-            if(res) { lista[i] = res; render(); }
-        }
-
-        function eliminarSimple(i) {
-            lista.splice(i, 1); render();
-        }
-
-        function registrarMarcacion(dni) {
-            let emp = lista.find(x => x.dni === dni);
-            if(emp) {
-                logs.unshift({ hora: new Date().toLocaleTimeString(), nombre: emp.nombres + " " + emp.apellidos, estado: "Asistió" });
-                Swal.fire('Check!', emp.nombres + ' registrado.', 'success');
-                render();
-            } else {
-                Swal.fire('Error', 'DNI no encontrado: ' + dni, 'error');
-            }
-        }
-
-        function encenderCamara() {
-            if(!scanner) scanner = new Html5Qrcode("reader-simple");
-            scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 200 }, (txt) => { apagarCamara(); registrarMarcacion(txt.trim()); }, () => {});
-        }
-
-        function apagarCamara() { if(scanner && scanner.isScanning) scanner.stop(); }
-
-        function exportarBackup() {
-            const data = "data:text/javascript;charset=utf-8," + encodeURIComponent(`const backup = ${JSON.stringify(lista)};`);
-            const link = document.createElement('a'); link.href = data; link.download = 'backup_simple.js'; link.click();
-        }
-
-        window.onload = render;
-    </script>
+    <script src="app.js"></script>
 </body>
 </html>
