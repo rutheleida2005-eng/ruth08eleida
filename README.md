@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Escáner QR & Registro Temporal</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans">
+
+    <header class="bg-slate-800 border-b border-slate-700 p-4 text-center shadow-lg">
+        <h1 class="text-xl font-bold text-emerald-400 flex justify-center items-center gap-2">
+            📷 Lector QR con Historial
+        </h1>
+    </header>
+
+    <main class="flex-1 max-w-md w-full mx-auto p-4 flex flex-col justify-between space-y-6">
+        
+        <div class="space-y-4">
+            <div class="relative bg-slate-950 rounded-2xl border-2 border-slate-700 overflow-hidden shadow-inner min-h-[300px] flex flex-col items-center justify-center">
+                <div id="reader" class="w-full h-full"></div>
+                
+                <div id="camara-apagada-text" class="absolute text-center p-6 text-slate-400 space-y-2">
+                    <span class="text-5xl block">🎥</span>
+                    <p class="text-sm font-semibold">Visor de cámara inactivo</p>
+                    <p class="text-xs text-slate-500">Presiona el botón inferior para escanear</p>
+                </div>
+            </div>
+
+            <button id="btn-camara" onclick="alternarCamara()" class="w-full bg-emerald-500 hover:bg-emerald-600 active:scale-98 text-slate-950 font-bold py-4 px-4 rounded-xl transition duration-150 shadow-md cursor-pointer text-center text-base">
+                🔋 Activar Cámara Móvil
+            </button>
+        </div>
+
+        <div class="flex-1 flex flex-col min-h-[200px]">
+            <div class="flex justify-between items-center mb-3">
+                <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400">Códigos Almacenados</h2>
+                <button onclick="limpiarRegistros()" class="text-xs font-medium text-rose-400 hover:text-rose-300 transition cursor-pointer">
+                    🗑️ Limpiar Historial
+                </button>
+            </div>
+
+            <div id="lista-historial" class="flex-1 bg-slate-800/40 border border-slate-700 rounded-xl p-3 overflow-y-auto max-h-[280px] space-y-3 shadow-inner">
+                <p id="historial-vacio" class="text-sm text-slate-500 text-center py-10 italic">Ningún código reconocido en esta sesión.</p>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="text-center p-3 text-[11px] text-slate-500 bg-slate-950/20 border-t border-slate-800/60">
+        Almacenamiento Local Seguro (Persistente en el dispositivo)
+    </footer>
+
+    <script>
+        let qrScanner = null;
+        let esCamaraActiva = false;
+        let baseDatosLocal = [];
+
+        // Recuperar registros del almacenamiento interno al iniciar la página
+        document.addEventListener("DOMContentLoaded", () => {
+            const datosExistentes = localStorage.getItem("historial_qr_data");
+            if (datosExistentes) {
+                baseDatosLocal = JSON.parse(datosExistentes);
+                actualizarInterfazHistorial();
+            }
+        });
+
+        // Controla el flujo de encendido y apagado del visor
+        function alternarCamara() {
+            const boton = document.getElementById("btn-camara");
+            const textoMarcador = document.getElementById("camara-apagada-text");
+
+            if (!esCamaraActiva) {
+                // Instancia el lector apuntando al contenedor HTML
+                qrScanner = new Html5Qrcode("reader");
+                textoMarcador.classList.add("hidden");
+
+                // Configuración optimizada de fotogramas y recuadro guía
+                const configPropiedades = {
+                    fps: 15,
+                    qrbox: (width, height) => {
+                        const cajaDimension = Math.min(width, height) * 0.65;
+                        return { width: cajaDimension, height: cajaDimension };
+                    }
+                };
+
+                // 'facingMode: environment' fuerza de manera nativa la cámara principal (trasera) del móvil
+                qrScanner.start(
+                    { facingMode: "environment" },
+                    configPropiedades,
+                    alDetectarCodigoExitoso,
+                    alDetectarFallaEnfoque
+                )
+                .then(() => {
+                    esCamaraActiva = true;
+                    boton.innerText = "🛑 Detener Cámara";
+                    boton.classList.replace("bg-emerald-500", "bg-rose-500");
+                    boton.classList.replace("hover:bg-emerald-600", "hover:bg-rose-600");
+                    boton.classList.replace("text-slate-950", "text-white");
+                })
+                .catch(errorLog => {
+                    console.error("Fallo de inicio de hardware:", errorLog);
+                    textoMarcador.classList.remove("hidden");
+                    alert("No se pudo acceder a la cámara. Concede los permisos necesarios en tu navegador web.");
+                });
+            } else {
+                apagarFlujoVideo();
+            }
+        }
+
+        // Callback cuando el algoritmo de la librería procesa un QR válido
+        function alDetectarCodigoExitoso(textoDecodificado, resultadoObjeto) {
+            const marcaTiempo = new Date();
+            
+            // Estructuración de Fecha y Hora local
+            const stringFecha = marcaTiempo.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            const stringHora = marcaTiempo.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+            // Insertamos el nuevo registro al principio de la lista
+            baseDatosLocal.unshift({
+                contenido: textoDecodificado,
+                fecha: stringFecha,
+                hora: stringHora
+            });
+
+            // Guardado persistente en memoria local del teléfono
+            localStorage.setItem("historial_qr_data", JSON.stringify(baseDatosLocal));
+
+            // Si el dispositivo cuenta con motor de vibración táctil, emite confirmación
+            if (navigator.vibrate) navigator.vibrate(100);
+
+            actualizarInterfazHistorial();
+            apagarFlujoVideo(); // Cierra el uso de la cámara para mitigar consumo energético
+        }
+
+        // Ignoramos los errores continuos de fotogramas vacíos para no saturar la consola
+        function alDetectarFallaEnfoque(mensajeFalla) {}
+
+        // Apaga la transmisión de video de forma limpia
+        function apagarFlujoVideo() {
+            const boton = document.getElementById("btn-camara");
+            const textoMarcador = document.getElementById("camara-apagada-text");
+
+            if (qrScanner) {
+                qrScanner.stop().then(() => {
+                    document.getElementById("reader").innerHTML = "";
+                    textoMarcador.classList.remove("hidden");
+                    esCamaraActiva = false;
+
+                    // Restablece los estilos por defecto del botón
+                    boton.innerText = "🔋 Activar Cámara Móvil";
+                    boton.classList.replace("bg-rose-500", "bg-emerald-500");
+                    boton.classList.replace("hover:bg-rose-600", "hover:bg-emerald-600");
+                    boton.classList.replace("text-white", "text-slate-950");
+                }).catch(err => console.error("Error al cerrar flujo de video:", err));
+            }
+        }
+
+        // Renderiza el historial de escaneos actualizados en la pantalla
+        function actualizarInterfazHistorial() {
+            const cajaContenedor = document.getElementById("lista-historial");
+            const textoVacio = document.getElementById("historial-vacio");
+
+            if (baseDatosLocal.length === 0) {
+                cajaContenedor.innerHTML = '';
+                cajaContenedor.appendChild(textoVacio);
+                return;
+            }
+
+            cajaContenedor.innerHTML = baseDatosLocal.map(registro => `
+                <div class="bg-slate-800 border-l-4 border-emerald-500 p-3 rounded-r-xl space-y-1 shadow-sm">
+                    <div class="flex justify-between items-center text-[10px] text-slate-400 font-mono">
+                        <span>📅 ${registro.fecha}</span>
+                        <span>⏱️ ${registro.hora}</span>
+                    </div>
+                    <p class="text-sm text-slate-100 font-medium break-all selection:bg-emerald-500 selection:text-slate-950">${sanitizarTexto(registro.contenido)}</p>
+                </div>
+            `).join('');
+        }
+
+        // Borra los datos almacenados
+        function limpiarRegistros() {
+            if (confirm("¿Deseas purgar de forma permanente el historial de capturas?")) {
+                baseDatosLocal = [];
+                localStorage.removeItem("historial_qr_data");
+                actualizarInterfazHistorial();
+            }
+        }
+
+        // Función de escape básica para mitigar ataques Cross-Site Scripting (XSS) mediante QRs maliciosos
+        function sanitizarTexto(rawInput) {
+            return rawInput
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
